@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User's unique ID" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "name": { "type": "string", "description": "User's full name" },
+        "userTier": { "type": "string", "enum": ["guest", "free", "pro_basic", "pro_premium", "pro_exclusive"], "description": "User's subscription tier" },
+        "subscriptionEndDate": { "type": "string", "format": "date-time", "description": "When the subscription ends" },
+        "openaiKey": { "type": "string", "description": "User's OpenAI API key" },
+        "deepseekKey": { "type": "string", "description": "User's DeepSeek API key" },
+        "fbToken": { "type": "string", "description": "User's Facebook Access Token" },
+        "fbAccountId": { "type": "string", "description": "User's Facebook Ad Account ID" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["uid", "email", "name", "userTier", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Saved market research report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who owns this report" },
+        "productName": { "type": "string", "description": "Name of the product analyzed" },
+        "analysisData": { "type": "string", "description": "JSON stringified analysis data" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Report creation timestamp" }
+      },
+      "required": ["userId", "productName", "analysisData", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles and settings"
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Stores user-generated market research reports"
+    }
+  }
+}

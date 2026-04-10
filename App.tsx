@@ -1,9 +1,12 @@
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { analyzeProduct } from './services/geminiService';
 import { MarketResearchResponse } from './types';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import Header from './components/Header';
+import { auth, db, googleProvider, handleFirestoreError, OperationType } from './services/firebase';
+import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export type UserTier = 'guest' | 'free' | 'pro_basic' | 'pro_premium' | 'pro_exclusive';
 
@@ -14,7 +17,11 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState<MarketResearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userTier, setUserTier] = useState<UserTier>('guest');
+  const [userName, setUserName] = useState<string>('');
+  
   const [showSignUp, setShowSignUp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
@@ -24,6 +31,45 @@ const App: React.FC = () => {
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'openai' | 'deepseek'>('gemini');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUserTier(data.userTier as UserTier || 'free');
+            setUserName(data.name || user.displayName || 'Uddokta User');
+            if (data.openaiKey) setOpenaiKey(data.openaiKey);
+            if (data.deepseekKey) setDeepseekKey(data.deepseekKey);
+          } else {
+            // Create new user profile
+            const newUserProfile = {
+              uid: user.uid,
+              email: user.email || '',
+              name: user.displayName || 'Uddokta User',
+              userTier: 'free',
+              createdAt: serverTimestamp()
+            };
+            await setDoc(userDocRef, newUserProfile);
+            setUserTier('free');
+            setUserName(newUserProfile.name);
+          }
+        } catch (err) {
+          handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
+        }
+      } else {
+        setUserTier('guest');
+        setUserName('');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -88,17 +134,62 @@ const App: React.FC = () => {
         deepseekKey: deepseekKey
       });
       setAnalysis(result);
+
+      // Save report to Firestore if user is logged in
+      if (currentUser) {
+        try {
+          await addDoc(collection(db, 'reports'), {
+            userId: currentUser.uid,
+            productName: productName || 'Image Analysis',
+            analysisData: JSON.stringify(result),
+            createdAt: serverTimestamp()
+          });
+        } catch (err) {
+          console.error("Failed to save report to Firestore", err);
+          // We don't throw here because the analysis was successful, we just failed to save it.
+        }
+      }
+
     } catch (err: any) {
       setError(err.message || 'Something went wrong while analyzing the product.');
     } finally {
       setIsLoading(false);
     }
-  }, [productName, imageFile]);
+  }, [productName, imageFile, selectedProvider, apiKey, openaiKey, deepseekKey]);
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUserTier('free');
-    setShowSignUp(false);
+    try {
+      await signInWithPopup(auth, googleProvider);
+      setShowSignUp(false);
+    } catch (error) {
+      console.error("Error signing in with Google", error);
+      setError("Failed to sign in with Google.");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setShowAccount(false);
+    } catch (error) {
+      console.error("Error signing out", error);
+    }
+  };
+
+  const saveSettings = async () => {
+    if (currentUser) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        await setDoc(userDocRef, {
+          openaiKey,
+          deepseekKey
+        }, { merge: true });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `users/${currentUser.uid}`);
+      }
+    }
+    setShowSettings(false);
   };
 
   return (
@@ -283,7 +374,7 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              <button onClick={() => setShowSettings(false)} className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl hover:bg-emerald-700 transition-all shadow-xl mt-4">
+              <button onClick={saveSettings} className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl hover:bg-emerald-700 transition-all shadow-xl mt-4">
                 Save & Close
               </button>
             </div>
@@ -297,8 +388,12 @@ const App: React.FC = () => {
           <div className={`rounded-[3rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}>
             <div className="flex justify-between items-start mb-8">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
-                  <i className="fas fa-user-circle"></i>
+                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner overflow-hidden">
+                  {currentUser?.photoURL ? (
+                    <img src={currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <i className="fas fa-user-circle"></i>
+                  )}
                 </div>
                 <div>
                   <h3 className="text-2xl font-black">My Profile</h3>
@@ -336,24 +431,17 @@ const App: React.FC = () => {
                 <div className={`space-y-3 p-6 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                   <div className="flex justify-between items-center">
                     <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Name</span>
-                    <span className="text-sm font-black">Uddokta User</span>
+                    <span className="text-sm font-black">{userName || 'Uddokta User'}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Email</span>
-                    <span className="text-sm font-black">user@example.com</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Member Since</span>
-                    <span className="text-sm font-black">April 2026</span>
+                    <span className="text-sm font-black">{currentUser?.email || 'Not provided'}</span>
                   </div>
                 </div>
               </div>
 
               <button 
-                onClick={() => {
-                  setUserTier('guest');
-                  setShowAccount(false);
-                }}
+                onClick={handleLogout}
                 className={`w-full py-4 font-black rounded-2xl transition-all border-2 ${isDarkMode ? 'border-rose-900/50 text-rose-400 hover:bg-rose-900/20' : 'border-rose-100 text-rose-600 hover:bg-rose-50'}`}
               >
                 Log Out

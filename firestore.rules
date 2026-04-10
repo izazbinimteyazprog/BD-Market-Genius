@@ -1,0 +1,157 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable) - User's unique ID
+    //   - email: string (required) - User's email address
+    //   - name: string (required) - User's full name
+    //   - userTier: string (required, immutable for non-admins) - User's subscription tier
+    //   - subscriptionEndDate: timestamp (optional, immutable for non-admins) - When the subscription ends
+    //   - openaiKey: string (optional) - User's OpenAI API key
+    //   - deepseekKey: string (optional) - User's DeepSeek API key
+    //   - fbToken: string (optional) - User's Facebook Access Token
+    //   - fbAccountId: string (optional) - User's Facebook Ad Account ID
+    //   - createdAt: timestamp (required, immutable) - Account creation timestamp
+    //
+    // Collection: reports
+    // Document ID: {reportId}
+    // Fields:
+    //   - userId: string (required, immutable) - ID of the user who owns this report
+    //   - productName: string (required) - Name of the product analyzed
+    //   - analysisData: string (required) - JSON stringified analysis data
+    //   - createdAt: timestamp (required, immutable) - Report creation timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+
+    function userIdUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+
+    function userIdNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) || 
+             (request.resource.data[field] is string && 
+              request.resource.data[field].size() >= minLen && 
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      let allowedFields = ['uid', 'email', 'name', 'userTier', 'subscriptionEndDate', 'openaiKey', 'deepseekKey', 'fbToken', 'fbAccountId', 'createdAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(['uid', 'email', 'name', 'userTier', 'createdAt']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
+             data.email is string && isValidEmail(data.email) && data.email.size() < 150 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.userTier in ['guest', 'free', 'pro_basic', 'pro_premium', 'pro_exclusive'] &&
+             data.createdAt is timestamp &&
+             (!( 'subscriptionEndDate' in data ) || data.subscriptionEndDate is timestamp) &&
+             isValidOptionalString('openaiKey', 0, 200) &&
+             isValidOptionalString('deepseekKey', 0, 200) &&
+             isValidOptionalString('fbToken', 0, 500) &&
+             isValidOptionalString('fbAccountId', 0, 100);
+    }
+
+    function isValidReport(data) {
+      let allowedFields = ['userId', 'productName', 'analysisData', 'createdAt'];
+      return hasOnlyAllowedFields(allowedFields) &&
+             hasRequiredFields(['userId', 'productName', 'analysisData', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 100 &&
+             data.productName is string && data.productName.size() > 0 && data.productName.size() < 200 &&
+             data.analysisData is string && data.analysisData.size() > 0 && data.analysisData.size() < 1048576 && // Max 1MB
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      
+      // Users can create their own profile, but must start as 'free' or 'guest'
+      allow create: if isOwner(userId) && 
+                       isValidUser(request.resource.data) && 
+                       uidUnchanged() &&
+                       request.resource.data.userTier in ['guest', 'free'] &&
+                       !('subscriptionEndDate' in request.resource.data);
+                       
+      // Users can update their own profile, but cannot change their tier, subscription end date, uid, or createdAt
+      allow update: if isOwner(userId) && 
+                       isValidUser(request.resource.data) && 
+                       uidNotModified() &&
+                       areImmutableFieldsUnchanged(['userTier', 'subscriptionEndDate', 'createdAt']);
+                       
+      allow delete: if isOwner(userId);
+    }
+
+    match /reports/{reportId} {
+      allow read: if isDocOwner();
+      
+      allow create: if isAuthenticated() && 
+                       isValidReport(request.resource.data) && 
+                       userIdUnchanged();
+                       
+      allow update: if isDocOwner() && 
+                       isValidReport(request.resource.data) && 
+                       userIdNotModified() &&
+                       areImmutableFieldsUnchanged(['createdAt']);
+                       
+      allow delete: if isDocOwner();
+    }
+  }
+}
