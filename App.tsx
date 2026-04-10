@@ -4,6 +4,7 @@ import { analyzeProduct } from './services/geminiService';
 import { MarketResearchResponse } from './types';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import Header from './components/Header';
+import UserDashboard from './components/UserDashboard';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from './services/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -382,73 +383,20 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Account Modal */}
+      {/* Account Modal / Dashboard */}
       {showAccount && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className={`rounded-[3rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}>
-            <div className="flex justify-between items-start mb-8">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner overflow-hidden">
-                  {currentUser?.photoURL ? (
-                    <img src={currentUser.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <i className="fas fa-user-circle"></i>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black">My Profile</h3>
-                  <p className={`font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Manage your account</p>
-                </div>
-              </div>
-              <button onClick={() => setShowAccount(false)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isDarkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                <p className={`text-xs font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Current Plan</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-xl font-black text-indigo-500 uppercase">
-                    {userTier === 'guest' ? 'Guest' : userTier === 'free' ? 'Free Plan' : userTier.replace('pro_', 'Pro ')}
-                  </p>
-                  {userTier !== 'pro_exclusive' && (
-                    <button 
-                      onClick={() => {
-                        setShowAccount(false);
-                        document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-                      }}
-                      className="px-4 py-2 bg-indigo-600 text-white text-xs font-black rounded-xl hover:bg-indigo-700 transition-all shadow-md"
-                    >
-                      Upgrade
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <p className={`text-xs font-black uppercase tracking-widest mb-3 ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Account Details</p>
-                <div className={`space-y-3 p-6 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex justify-between items-center">
-                    <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Name</span>
-                    <span className="text-sm font-black">{userName || 'Uddokta User'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Email</span>
-                    <span className="text-sm font-black">{currentUser?.email || 'Not provided'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <button 
-                onClick={handleLogout}
-                className={`w-full py-4 font-black rounded-2xl transition-all border-2 ${isDarkMode ? 'border-rose-900/50 text-rose-400 hover:bg-rose-900/20' : 'border-rose-100 text-rose-600 hover:bg-rose-50'}`}
-              >
-                Log Out
-              </button>
-            </div>
-          </div>
-        </div>
+        <UserDashboard
+          currentUser={currentUser}
+          userTier={userTier}
+          userName={userName}
+          isDarkMode={isDarkMode}
+          onClose={() => setShowAccount(false)}
+          onLogout={handleLogout}
+          onViewReport={(name, data) => {
+            setProductName(name);
+            setAnalysis(data);
+          }}
+        />
       )}
 
       {/* Sign Up Modal */}
