@@ -9,11 +9,14 @@ interface Props {
   onAccountClick: () => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  language: 'en' | 'bn';
+  toggleLanguage: () => void;
 }
 
-const Header: React.FC<Props> = ({ userTier, onSignUpClick, onSettingsClick, onAccountClick, isDarkMode, toggleDarkMode }) => {
+const Header: React.FC<Props> = ({ userTier, onSignUpClick, onSettingsClick, onAccountClick, isDarkMode, toggleDarkMode, language, toggleLanguage }) => {
   const isGuest = userTier === 'guest';
   const isPro = userTier.startsWith('pro_');
+  const isAdmin = userTier === 'admin';
 
   return (
     <header className={`backdrop-blur-lg border-b sticky top-0 z-[60] h-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-white/80 border-slate-100'}`}>
@@ -29,11 +32,17 @@ const Header: React.FC<Props> = ({ userTier, onSignUpClick, onSettingsClick, onA
         
         <div className="flex items-center gap-6">
           <nav className={`hidden lg:flex items-center space-x-8 text-[13px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            <a href="#" className="hover:text-emerald-600 transition-colors">How it works</a>
-            <a href="#" className="hover:text-emerald-600 transition-colors">Resources</a>
+            <a href="#" className="hover:text-emerald-600 transition-colors">{language === 'en' ? 'How it works' : 'কিভাবে কাজ করে'}</a>
+            <a href="#" className="hover:text-emerald-600 transition-colors">{language === 'en' ? 'Resources' : 'রিসোর্স'}</a>
           </nav>
 
           <div className={`flex items-center gap-4 border-l pl-6 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+            <button 
+              onClick={toggleLanguage}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-colors ${isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              {language === 'en' ? 'BN' : 'EN'}
+            </button>
             <button 
               onClick={toggleDarkMode}
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isDarkMode ? 'bg-slate-800 text-yellow-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}

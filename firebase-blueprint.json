@@ -29,6 +29,25 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "Report creation timestamp" }
       },
       "required": ["userId", "productName", "analysisData", "createdAt"]
+    },
+    "AppContent": {
+      "title": "AppContent",
+      "description": "Dynamic application content like resources",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "link": { "type": "string" }
+            }
+          }
+        }
+      }
     }
   },
   "firestore": {
@@ -39,6 +58,10 @@
     "/reports/{reportId}": {
       "schema": { "$ref": "#/entities/Report" },
       "description": "Stores user-generated market research reports"
+    },
+    "/appContent/{docId}": {
+      "schema": { "$ref": "#/entities/AppContent" },
+      "description": "Stores dynamic application content like resources"
     }
   }
 }

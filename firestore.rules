@@ -29,6 +29,11 @@ service cloud.firestore {
     //   - analysisData: string (required) - JSON stringified analysis data
     //   - createdAt: timestamp (required, immutable) - Report creation timestamp
     //
+    // Collection: appContent
+    // Document ID: {docId}
+    // Fields:
+    //   - items: list (required) - Array of content items
+    //
     // ===============================================================
 
     // ===============================================================
@@ -45,6 +50,12 @@ service cloud.firestore {
     
     function isDocOwner() {
       return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userTier == 'admin' || 
+         (request.auth.token.email == "izazbinimteyaz.1992jsr@gmail.com" && request.auth.token.email_verified == true));
     }
     
     function uidUnchanged() {
@@ -116,12 +127,17 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidAppContent(data) {
+      return hasOnlyAllowedFields(['items']) &&
+             data.items is list;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
       
       // Users can create their own profile, but must start as 'free' or 'guest'
       allow create: if isOwner(userId) && 
@@ -131,27 +147,35 @@ service cloud.firestore {
                        !('subscriptionEndDate' in request.resource.data);
                        
       // Users can update their own profile, but cannot change their tier, subscription end date, uid, or createdAt
-      allow update: if isOwner(userId) && 
-                       isValidUser(request.resource.data) && 
-                       uidNotModified() &&
-                       areImmutableFieldsUnchanged(['userTier', 'subscriptionEndDate', 'createdAt']);
+      // Admins can update everything
+      allow update: if (isOwner(userId) && 
+                        isValidUser(request.resource.data) && 
+                        uidNotModified() &&
+                        areImmutableFieldsUnchanged(['userTier', 'subscriptionEndDate', 'createdAt'])) ||
+                       (isAdmin() && isValidUser(request.resource.data));
                        
-      allow delete: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /reports/{reportId} {
-      allow read: if isDocOwner();
+      allow read: if isDocOwner() || isAdmin();
       
       allow create: if isAuthenticated() && 
                        isValidReport(request.resource.data) && 
                        userIdUnchanged();
                        
-      allow update: if isDocOwner() && 
-                       isValidReport(request.resource.data) && 
-                       userIdNotModified() &&
-                       areImmutableFieldsUnchanged(['createdAt']);
+      allow update: if (isDocOwner() && 
+                        isValidReport(request.resource.data) && 
+                        userIdNotModified() &&
+                        areImmutableFieldsUnchanged(['createdAt'])) ||
+                       (isAdmin() && isValidReport(request.resource.data));
                        
-      allow delete: if isDocOwner();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /appContent/{docId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin() && isValidAppContent(request.resource.data);
     }
   }
 }

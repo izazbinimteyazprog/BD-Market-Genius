@@ -5,11 +5,21 @@ import { MarketResearchResponse } from './types';
 import AnalysisDashboard from './components/AnalysisDashboard';
 import Header from './components/Header';
 import UserDashboard from './components/UserDashboard';
+import AuthModal from './components/AuthModal';
+import PricingModal from './components/PricingModal';
+import AdminDashboard from './components/AdminDashboard';
 import { auth, db, googleProvider, handleFirestoreError, OperationType } from './services/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-export type UserTier = 'guest' | 'free' | 'pro_basic' | 'pro_premium' | 'pro_exclusive';
+export type UserTier = 'guest' | 'free' | 'pro_basic' | 'pro_premium' | 'pro_exclusive' | 'admin';
+
+interface ResourceItem {
+  id: string;
+  title: string;
+  description: string;
+  link: string;
+}
 
 const App: React.FC = () => {
   const [productName, setProductName] = useState('');
@@ -26,14 +36,40 @@ const App: React.FC = () => {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [resources, setResources] = useState<ResourceItem[]>([
+    { id: '1', title: 'Meta Ads Guide BD', description: 'Learn how to run profitable ads in Bangladesh.', link: '#' },
+    { id: '2', title: 'Local Courier Integration', description: 'Connect Steadfast, Pathao, and RedX easily.', link: '#' },
+    { id: '3', title: 'Sourcing Secrets', description: 'Find the best wholesale markets in Dhaka.', link: '#' },
+    { id: '4', title: 'Scaling to 100 Orders/Day', description: 'Advanced strategies for e-commerce growth.', link: '#' }
+  ]);
   const [apiKey, setApiKey] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
   const [deepseekKey, setDeepseekKey] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'openai' | 'deepseek'>('gemini');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [language, setLanguage] = useState<'en' | 'bn'>('en');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const fetchResources = async () => {
+      const path = 'appContent/resources';
+      try {
+        const docRef = doc(db, 'appContent', 'resources');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().items) {
+          setResources(docSnap.data().items);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('permission')) {
+          handleFirestoreError(err, OperationType.GET, path);
+        }
+        console.error("Failed to fetch resources", err);
+      }
+    };
+    fetchResources();
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
@@ -158,17 +194,6 @@ const App: React.FC = () => {
     }
   }, [productName, imageFile, selectedProvider, apiKey, openaiKey, deepseekKey]);
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await signInWithPopup(auth, googleProvider);
-      setShowSignUp(false);
-    } catch (error) {
-      console.error("Error signing in with Google", error);
-      setError("Failed to sign in with Google.");
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -202,6 +227,8 @@ const App: React.FC = () => {
         onAccountClick={() => setShowAccount(true)}
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
+        language={language}
+        toggleLanguage={() => setLanguage(l => l === 'en' ? 'bn' : 'en')}
       />
       
       <main className="flex-grow">
@@ -209,10 +236,11 @@ const App: React.FC = () => {
         <div className="container mx-auto px-4 pt-12 pb-8">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className={`text-4xl md:text-5xl font-black mb-6 leading-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-              Bangladesh E-commerce <span className="text-emerald-600">Strategy Engine</span>
+              {language === 'en' ? 'Bangladesh E-commerce ' : 'বাংলাদেশ ই-কমার্স '}
+              <span className="text-emerald-600">{language === 'en' ? 'Strategy Engine' : 'স্ট্র্যাটেজি ইঞ্জিন'}</span>
             </h1>
             <p className={`text-lg mb-10 font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              Get instant market research, consumer personas, and high-converting ad frameworks.
+              {language === 'en' ? 'Get instant market research, consumer personas, and high-converting ad frameworks.' : 'তাৎক্ষণিক মার্কেট রিসার্চ, কাস্টমার পারসোনা এবং হাই-কনভার্টিং অ্যাড ফ্রেমওয়ার্ক পান।'}
             </p>
 
             <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto mb-8">
@@ -224,7 +252,7 @@ const App: React.FC = () => {
                   <input
                     type="text"
                     className={`block w-full pl-14 pr-36 py-5 border rounded-[2rem] shadow-xl focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 text-lg transition-all outline-none ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'}`}
-                    placeholder="Enter product name (e.g., Organic Honey...)"
+                    placeholder={language === 'en' ? "Enter product name (e.g., Organic Honey...)" : "পণ্যের নাম লিখুন (যেমন: খাঁটি মধু...)"}
                     value={productName}
                     onChange={(e) => setProductName(e.target.value)}
                     disabled={isLoading}
@@ -237,7 +265,7 @@ const App: React.FC = () => {
                     {isLoading ? (
                       <i className="fas fa-spinner fa-spin"></i>
                     ) : (
-                      <><span>Analyze</span> <i className="fas fa-arrow-right text-xs"></i></>
+                      <><span>{language === 'en' ? 'Analyze' : 'বিশ্লেষণ করুন'}</span> <i className="fas fa-arrow-right text-xs"></i></>
                     )}
                   </button>
                 </div>
@@ -256,7 +284,7 @@ const App: React.FC = () => {
                     className={`px-6 py-3 border font-bold rounded-2xl transition-all flex items-center gap-2 shadow-sm ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
                   >
                     <i className="fas fa-image text-emerald-600"></i>
-                    {imageFile ? 'Change Image' : 'Upload Product Image'}
+                    {imageFile ? (language === 'en' ? 'Change Image' : 'ছবি পরিবর্তন করুন') : (language === 'en' ? 'Upload Product Image' : 'পণ্যের ছবি আপলোড করুন')}
                   </button>
                   
                   {imagePreview && (
@@ -283,6 +311,113 @@ const App: React.FC = () => {
             )}
           </div>
         </div>
+
+        {!analysis && !isLoading && (
+          <div className="container mx-auto px-4 py-12">
+            {/* How it Works Section */}
+            <section id="how-it-works" className="max-w-5xl mx-auto mb-24">
+              <div className="text-center mb-12">
+                <h2 className={`text-3xl font-black mb-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>How It Works</h2>
+                <p className={`text-lg ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Three simple steps to launch your product in Bangladesh.</p>
+              </div>
+              <div className="grid md:grid-cols-3 gap-8">
+                <div className={`p-8 rounded-[2rem] border text-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50'}`}>
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-6 font-black">1</div>
+                  <h3 className={`text-xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Input Product</h3>
+                  <p className={`text-sm leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Enter your product name or upload an image. Our engine understands the local context.</p>
+                </div>
+                <div className={`p-8 rounded-[2rem] border text-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50'}`}>
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-6 font-black">2</div>
+                  <h3 className={`text-xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>AI Analysis</h3>
+                  <p className={`text-sm leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>We analyze competitors, market fit, and sourcing costs specifically for the BD market.</p>
+                </div>
+                <div className={`p-8 rounded-[2rem] border text-center ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50'}`}>
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-6 font-black">3</div>
+                  <h3 className={`text-xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Get Strategy</h3>
+                  <p className={`text-sm leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Receive ready-to-use ad copies, targeting logic, and a final verdict on profitability.</p>
+                </div>
+              </div>
+            </section>
+
+            {/* How to Use Section */}
+            <section id="how-to-use" className="max-w-5xl mx-auto mb-24">
+              <div className={`p-10 rounded-[3rem] border ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-emerald-50/50 border-emerald-100'}`}>
+                <div className="flex flex-col md:flex-row gap-12 items-center">
+                  <div className="flex-1">
+                    <h2 className={`text-3xl font-black mb-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>How to Use the Free API</h2>
+                    <div className="space-y-6">
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><i className="fas fa-key"></i></div>
+                        <div>
+                          <h4 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>1. Get Your Free Key</h4>
+                          <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Go to Google AI Studio and generate a free Gemini API key. It takes 30 seconds.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><i className="fas fa-cog"></i></div>
+                        <div>
+                          <h4 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>2. Open Settings</h4>
+                          <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Click the gear icon in the top right corner of this app to open the settings menu.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"><i className="fas fa-paste"></i></div>
+                        <div>
+                          <h4 className={`font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>3. Paste & Save</h4>
+                          <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Paste your key into the Gemini API Key field. Your key is stored locally and securely.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 w-full">
+                    <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200 shadow-xl'}`}>
+                      <h4 className={`text-sm font-black uppercase mb-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Supported Providers</h4>
+                      <div className="space-y-3">
+                        <div className={`p-4 rounded-xl border flex justify-between items-center ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-100 bg-slate-50'}`}>
+                          <span className="font-bold flex items-center gap-2"><i className="fas fa-sparkles text-emerald-500"></i> Gemini (Free Tier)</span>
+                          <span className="text-xs font-black px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md">Recommended</span>
+                        </div>
+                        <div className={`p-4 rounded-xl border flex justify-between items-center ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-100 bg-slate-50'}`}>
+                          <span className="font-bold flex items-center gap-2"><i className="fas fa-robot text-indigo-500"></i> ChatGPT</span>
+                          <span className="text-xs font-black px-2 py-1 bg-slate-200 text-slate-700 rounded-md">BYOK</span>
+                        </div>
+                        <div className={`p-4 rounded-xl border flex justify-between items-center ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-100 bg-slate-50'}`}>
+                          <span className="font-bold flex items-center gap-2"><i className="fas fa-brain text-blue-500"></i> DeepSeek</span>
+                          <span className="text-xs font-black px-2 py-1 bg-slate-200 text-slate-700 rounded-md">BYOK</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Resources Section */}
+            <section id="resources" className="max-w-5xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className={`text-3xl font-black mb-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {language === 'en' ? 'Resources for Uddoktas' : 'উদ্যোক্তাদের জন্য রিসোর্স'}
+                </h2>
+                <p className={`text-lg ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                  {language === 'en' ? 'Everything you need to scale your business in Bangladesh.' : 'বাংলাদেশে আপনার ব্যবসা প্রসারিত করার জন্য প্রয়োজনীয় সবকিছু।'}
+                </p>
+              </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                {resources.map((res, i) => (
+                  <a key={res.id} href={res.link} className={`p-6 rounded-2xl border flex items-start gap-4 transition-all hover:scale-[1.02] ${isDarkMode ? 'bg-slate-900 border-slate-800 hover:border-emerald-500/50' : 'bg-white border-slate-200 hover:border-emerald-500/50 hover:shadow-xl'}`}>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                      <i className="fas fa-book-open"></i>
+                    </div>
+                    <div>
+                      <h4 className={`font-black text-lg mb-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{res.title}</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{res.description}</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
 
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20 space-y-8 container mx-auto">
@@ -324,6 +459,11 @@ const App: React.FC = () => {
               </div>
               <h3 className="text-2xl font-black">Settings</h3>
               <p className={`font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Configure your API keys</p>
+              {!currentUser && (
+                <div className="mt-3 text-xs font-bold px-3 py-2 bg-amber-100 text-amber-800 rounded-lg inline-block">
+                  <i className="fas fa-info-circle mr-1"></i> Keys are saved locally. Log in to sync.
+                </div>
+              )}
             </div>
             <div className="space-y-4">
               <div>
@@ -337,7 +477,12 @@ const App: React.FC = () => {
 
               {selectedProvider === 'gemini' && (
                 <div>
-                  <label className={`block text-xs font-black uppercase mb-2 ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Gemini API Key (Optional)</label>
+                  <div className="flex justify-between items-end mb-2 ml-1">
+                    <label className={`block text-xs font-black uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Gemini API Key</label>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-xs font-bold text-emerald-500 hover:text-emerald-600 flex items-center gap-1">
+                      Get Free Key <i className="fas fa-external-link-alt text-[10px]"></i>
+                    </a>
+                  </div>
                   <input 
                     type="password" 
                     value={apiKey}
@@ -345,13 +490,18 @@ const App: React.FC = () => {
                     className={`w-full px-5 py-4 border rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} 
                     placeholder="AIzaSy..." 
                   />
-                  <p className={`text-xs mt-2 ml-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Leave blank to use the default free API key.</p>
+                  <p className={`text-xs mt-2 ml-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Leave blank to use the default server key (if configured).</p>
                 </div>
               )}
 
               {selectedProvider === 'openai' && (
                 <div>
-                  <label className={`block text-xs font-black uppercase mb-2 ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>OpenAI API Key</label>
+                  <div className="flex justify-between items-end mb-2 ml-1">
+                    <label className={`block text-xs font-black uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>OpenAI API Key</label>
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-xs font-bold text-emerald-500 hover:text-emerald-600 flex items-center gap-1">
+                      Get Key <i className="fas fa-external-link-alt text-[10px]"></i>
+                    </a>
+                  </div>
                   <input 
                     type="password" 
                     value={openaiKey}
@@ -364,7 +514,12 @@ const App: React.FC = () => {
 
               {selectedProvider === 'deepseek' && (
                 <div>
-                  <label className={`block text-xs font-black uppercase mb-2 ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>DeepSeek API Key</label>
+                  <div className="flex justify-between items-end mb-2 ml-1">
+                    <label className={`block text-xs font-black uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>DeepSeek API Key</label>
+                    <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer" className="text-xs font-bold text-emerald-500 hover:text-emerald-600 flex items-center gap-1">
+                      Get Key <i className="fas fa-external-link-alt text-[10px]"></i>
+                    </a>
+                  </div>
                   <input 
                     type="password" 
                     value={deepseekKey}
@@ -396,38 +551,49 @@ const App: React.FC = () => {
             setProductName(name);
             setAnalysis(data);
           }}
+          onUpgradeClick={() => {
+            setShowAccount(false);
+            setShowPricing(true);
+          }}
+          onAdminClick={() => {
+            setShowAccount(false);
+            setShowAdmin(true);
+          }}
         />
       )}
 
-      {/* Sign Up Modal */}
+      {/* Admin Dashboard */}
+      {showAdmin && (
+        <AdminDashboard 
+          isDarkMode={isDarkMode}
+          onClose={() => setShowAdmin(false)}
+        />
+      )}
+
+      {/* Auth Modal */}
       {showSignUp && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className={`rounded-[3rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}>
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-user-plus text-2xl"></i>
-              </div>
-              <h3 className="text-2xl font-black">Create Account</h3>
-              <p className={`font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Sign up to access free strategy reports</p>
-            </div>
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div>
-                <label className={`block text-xs font-black uppercase mb-2 ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Full Name</label>
-                <input required type="text" className={`w-full px-5 py-4 border rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} placeholder="Uddokta Name" />
-              </div>
-              <div>
-                <label className={`block text-xs font-black uppercase mb-2 ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Email Address</label>
-                <input required type="email" className={`w-full px-5 py-4 border rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} placeholder="email@example.com" />
-              </div>
-              <button type="submit" className={`w-full py-5 text-white font-black rounded-2xl transition-all shadow-xl mt-4 ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-900 hover:bg-slate-800'}`}>
-                Get Started Free
-              </button>
-            </form>
-            <button onClick={() => setShowSignUp(false)} className={`w-full py-3 mt-4 font-bold ${isDarkMode ? 'text-slate-400 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-              Cancel
-            </button>
-          </div>
-        </div>
+        <AuthModal 
+          isDarkMode={isDarkMode} 
+          onClose={() => setShowSignUp(false)} 
+          onSuccess={() => setShowSignUp(false)} 
+        />
+      )}
+
+      {/* Pricing Modal */}
+      {showPricing && (
+        <PricingModal 
+          isDarkMode={isDarkMode} 
+          onClose={() => setShowPricing(false)} 
+          onUpgrade={(tier) => {
+            // Update user tier in Firestore and state
+            if (currentUser) {
+              const userDocRef = doc(db, 'users', currentUser.uid);
+              setDoc(userDocRef, { userTier: tier }, { merge: true });
+              setUserTier(tier);
+            }
+            setShowPricing(false);
+          }} 
+        />
       )}
 
       <footer className={`py-12 text-center text-sm mt-20 border-t ${isDarkMode ? 'bg-slate-950 text-slate-500 border-slate-900' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>

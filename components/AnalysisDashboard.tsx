@@ -39,15 +39,13 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
     }
   };
 
-  const { 
-    product_market_fit: pmf, 
-    competition_analysis: comp, 
-    competitor_research: compRes,
-    customer_avatars: avatars,
-    ad_copies: copies,
-    final_decision: decision,
-    sourcing_information: sourcing
-  } = localAnalysis;
+  const pmf = localAnalysis?.product_market_fit;
+  const comp = localAnalysis?.competition_analysis;
+  const compRes = localAnalysis?.competitor_research;
+  const avatars = localAnalysis?.customer_avatars || [];
+  const copies = localAnalysis?.ad_copies || {};
+  const decision = localAnalysis?.final_decision;
+  const sourcing = localAnalysis?.sourcing_information;
 
   const isGuest = userTier === 'guest';
   const isFree = userTier === 'free';
@@ -191,7 +189,7 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
             <div>
               <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Hooks</p>
               <ul className="space-y-3">
-                {piece.hooks.map((hook, i) => (
+                {(piece.hooks || []).map((hook, i) => (
                   <li key={i} className={`flex items-start gap-3 p-4 rounded-xl font-medium ${isDarkMode ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-50 text-emerald-900'}`}>
                     <i className="fas fa-quote-left text-emerald-400 mt-1"></i> {hook}
                   </li>
@@ -201,7 +199,7 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
             <div>
               <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Visual Ideas</p>
               <ul className="space-y-3">
-                {piece.ideas.map((idea, i) => (
+                {(piece.ideas || []).map((idea, i) => (
                   <li key={i} className={`flex items-start gap-3 p-4 rounded-xl font-medium ${isDarkMode ? 'bg-indigo-900/30 text-indigo-300' : 'bg-indigo-50 text-indigo-900'}`}>
                     <i className="fas fa-camera text-indigo-400 mt-1"></i> {idea}
                   </li>
@@ -213,7 +211,7 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
           <div>
             <p className={`text-sm font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Ad Variations</p>
             <div className="space-y-4">
-              {piece.variations.map((v, i) => (
+              {(piece.variations || []).map((v, i) => (
                 <div key={i} className={`p-6 border-2 rounded-2xl transition-colors relative group ${isDarkMode ? 'border-slate-800 hover:border-indigo-500/50' : 'border-slate-100 hover:border-indigo-200'}`}>
                   <button 
                     onClick={() => handleCopy(`${v.headline}\n\n${v.hook}\n\n${v.body}\n\n${v.cta}`, `copy-${piece.id}-${i}`)}
@@ -284,7 +282,7 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
 
   const renderStrategyTab = () => {
     const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-    const pieData = decision.marketing_channels.map(c => ({ name: c.channel, value: c.allocation_percentage }));
+    const pieData = (decision?.marketing_channels || []).map(c => ({ name: c.channel, value: c.allocation_percentage }));
 
     return (
       <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -296,10 +294,10 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
             </div>
             
             <div className="relative z-10 flex flex-col lg:flex-row items-center gap-16">
-              <div className={`shrink-0 w-72 h-72 rounded-[4.5rem] rotate-3 flex flex-col items-center justify-center border-4 border-white/20 shadow-2xl backdrop-blur-sm ${decision.verdict === 'YES' ? 'bg-emerald-500/90' : 'bg-rose-500/90'}`}>
+              <div className={`shrink-0 w-72 h-72 rounded-[4.5rem] rotate-3 flex flex-col items-center justify-center border-4 border-white/20 shadow-2xl backdrop-blur-sm ${decision?.verdict === 'YES' ? 'bg-emerald-500/90' : 'bg-rose-500/90'}`}>
                 <div className="-rotate-3 flex flex-col items-center">
                   <span className="text-[10px] uppercase font-black tracking-[0.2em] opacity-80 mb-3">Strategy Verdict</span>
-                  <span className="text-9xl font-black tracking-tighter">{decision.verdict}</span>
+                  <span className="text-9xl font-black tracking-tighter">{decision?.verdict || 'N/A'}</span>
                 </div>
               </div>
               
@@ -307,40 +305,40 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
                 <h2 className="text-3xl lg:text-5xl font-black mb-10 leading-[1.2] text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">ব্যবসায়িক পর্যালোচনা ও <br/> <span className="text-emerald-400">পূর্ণাঙ্গ স্ট্র্যাটেজি</span></h2>
                 <div className="p-10 bg-white/5 border border-white/10 rounded-[2.5rem] backdrop-blur-md">
                   <p className="text-xl lg:text-2xl font-bold italic text-slate-100 leading-relaxed break-words whitespace-pre-wrap">
-                    "{decision.decision_reasoning}"
+                    "{decision?.decision_reasoning || 'No reasoning provided.'}"
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-10 relative z-10">
-               <div className="bg-white/5 backdrop-blur-md p-10 rounded-[3rem] border border-white/10 shadow-xl">
-                 <div className="flex items-center gap-5 mb-6">
-                   <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-lg"><i className="fas fa-chart-line text-2xl"></i></div>
-                   <p className="text-xs font-black uppercase text-emerald-400 tracking-widest">Niche Potential</p>
-                 </div>
-                 <p className="text-sm text-slate-300 font-bold leading-relaxed mb-6">{decision.niche_potential_description}</p>
-                 <div className="text-4xl font-black text-white uppercase tracking-tighter">খুব ভালো</div>
-               </div>
-
-               <div className="bg-white/5 backdrop-blur-md p-10 rounded-[3rem] border border-white/10 shadow-xl">
-                 <div className="flex items-center gap-5 mb-6">
-                   <div className="w-14 h-14 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400 shadow-lg"><i className="fas fa-bullseye text-2xl"></i></div>
-                   <p className="text-xs font-black uppercase text-blue-400 tracking-widest">Market Fit Score</p>
-                 </div>
-                 <p className="text-sm text-slate-300 font-bold leading-relaxed mb-6">{decision.market_fit_detailed_reason}</p>
-                 <div className="text-5xl font-black text-white">{pmf.market_fit_score}<span className="text-2xl opacity-40 ml-2">/ 10</span></div>
-               </div>
-
-               <div className="bg-white/5 backdrop-blur-md p-10 rounded-[3rem] border border-white/10 shadow-xl">
-                 <div className="flex items-center gap-5 mb-6">
-                   <div className="w-14 h-14 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-400 shadow-lg"><i className="fas fa-wallet text-2xl"></i></div>
-                   <p className="text-xs font-black uppercase text-amber-400 tracking-widest">Starting Budget</p>
-                 </div>
-                 <p className="text-sm text-slate-300 font-bold leading-relaxed mb-6">{decision.budget_breakdown_detail}</p>
-                 <div className="text-4xl font-black text-white tracking-tighter">৳{decision.starting_budget_bdt.toLocaleString()}</div>
-               </div>
-            </div>
+             <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-10 relative z-10">
+                <div className="bg-white/5 backdrop-blur-md p-10 rounded-[3rem] border border-white/10 shadow-xl">
+                  <div className="flex items-center gap-5 mb-6">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-lg"><i className="fas fa-chart-line text-2xl"></i></div>
+                    <p className="text-xs font-black uppercase text-emerald-400 tracking-widest">Niche Potential</p>
+                  </div>
+                  <p className="text-sm text-slate-300 font-bold leading-relaxed mb-6">{decision?.niche_potential_description || 'N/A'}</p>
+                  <div className="text-4xl font-black text-white uppercase tracking-tighter">খুব ভালো</div>
+                </div>
+ 
+                <div className="bg-white/5 backdrop-blur-md p-10 rounded-[3rem] border border-white/10 shadow-xl">
+                  <div className="flex items-center gap-5 mb-6">
+                    <div className="w-14 h-14 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400 shadow-lg"><i className="fas fa-bullseye text-2xl"></i></div>
+                    <p className="text-xs font-black uppercase text-blue-400 tracking-widest">Market Fit Score</p>
+                  </div>
+                  <p className="text-sm text-slate-300 font-bold leading-relaxed mb-6">{decision?.market_fit_detailed_reason || 'N/A'}</p>
+                  <div className="text-5xl font-black text-white">{pmf?.market_fit_score || 0}<span className="text-2xl opacity-40 ml-2">/ 10</span></div>
+                </div>
+ 
+                <div className="bg-white/5 backdrop-blur-md p-10 rounded-[3rem] border border-white/10 shadow-xl">
+                  <div className="flex items-center gap-5 mb-6">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-400 shadow-lg"><i className="fas fa-wallet text-2xl"></i></div>
+                    <p className="text-xs font-black uppercase text-amber-400 tracking-widest">Starting Budget</p>
+                  </div>
+                  <p className="text-sm text-slate-300 font-bold leading-relaxed mb-6">{decision?.budget_breakdown_detail || 'N/A'}</p>
+                  <div className="text-4xl font-black text-white tracking-tighter">৳{decision?.starting_budget_bdt?.toLocaleString() || '0'}</div>
+                </div>
+             </div>
           </section>
         </PremiumLock>
 
@@ -352,7 +350,7 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
               মূল সফলতার নিয়ামকসমূহ (Success Factors)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12">
-              {decision.decision_factors.map((f, i) => (
+              {(decision?.decision_factors || []).map((f, i) => (
                 <div key={i} className="space-y-4 group">
                   <div className="flex justify-between items-center">
                     <span className={`flex items-center gap-4 text-sm font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}`}>
@@ -407,10 +405,10 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
               {[
-                { label: 'প্রতিযোগিতার ধরন', val: comp.competition_type },
-                { label: 'প্রাইস লেভেল', val: `৳${comp.price_range_bdt}` },
-                { label: 'এন্ট্রি লেভেল', val: comp.entry_difficulty },
-                { label: 'গড় চাহিদা', val: pmf.urgency_level }
+                { label: 'প্রতিযোগিতার ধরন', val: comp?.competition_type || 'N/A' },
+                { label: 'প্রাইস লেভেল', val: comp?.price_range_bdt ? `৳${comp.price_range_bdt}` : 'N/A' },
+                { label: 'এন্ট্রি লেভেল', val: comp?.entry_difficulty || 'N/A' },
+                { label: 'গড় চাহিদা', val: pmf?.urgency_level || 'N/A' }
               ].map((item, i) => (
                 <div key={i} className={`p-8 rounded-[2.5rem] border text-center transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:shadow-xl' : 'bg-slate-50 border-slate-100 hover:bg-white hover:shadow-xl'}`}>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">{item.label}</p>
@@ -436,7 +434,7 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
                 </ResponsiveContainer>
               </div>
               <div className="space-y-4">
-                {decision.marketing_channels.map((c, i) => (
+                {(decision?.marketing_channels || []).map((c, i) => (
                   <div key={i} className={`flex flex-col gap-2 p-5 rounded-[2rem] border transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:shadow-md' : 'bg-slate-50 border-slate-100 hover:bg-white hover:shadow-md'}`}>
                     <div className="flex items-center justify-between font-black text-xs">
                       <span className={`flex items-center gap-3 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}><div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS[i % COLORS.length]}}></div> {c.channel}</span>
@@ -457,7 +455,7 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
                  সফল উদ্যোক্তা হওয়ার সিক্রেট টিপস
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 relative z-10">
-                {decision.entrepreneur_advice.map((advice, i) => (
+                {(decision?.entrepreneur_advice || []).map((advice, i) => (
                   <div key={i} className="p-8 bg-white/5 rounded-[2.5rem] border border-white/10 hover:bg-white/10 transition-all group">
                     <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-xs font-black mb-6 shadow-xl group-hover:scale-110 transition-transform">{i+1}</div>
                     <p className="text-lg font-bold leading-relaxed text-slate-200 italic">"{advice}"</p>
@@ -475,16 +473,16 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
               <p className={`font-bold text-lg ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>এই ব্র্যান্ডগুলো বর্তমানে মার্কেটে ভালো করছে। আপনি আলাদাভাবে এদের রিসার্চ করতে পারেন।</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10">
-              {compRes.top_competitors.map((brand, i) => (
+              {(compRes?.top_competitors || []).map((brand, i) => (
                 <div key={i} className={`p-10 rounded-[3rem] border flex flex-col items-center justify-center text-center group transition-all duration-500 transform hover:-translate-y-3 ${isDarkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:shadow-2xl' : 'bg-slate-50 border-slate-100 hover:bg-white hover:shadow-2xl'}`}>
                   <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-xl flex items-center justify-center mb-8 text-white font-black text-4xl shadow-indigo-100/20">
-                    {brand.name.charAt(0)}
+                    {brand.name?.charAt(0) || '?'}
                   </div>
-                  <p className={`text-xl font-black mb-6 break-words w-full ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{brand.name}</p>
+                  <p className={`text-xl font-black mb-6 break-words w-full ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{brand.name || 'Unknown'}</p>
                   <div className="flex gap-4 items-center">
-                     {brand.active_platforms.includes('facebook') && <i className="fab fa-facebook text-slate-400 group-hover:text-blue-500 transition-colors"></i>}
-                     {brand.active_platforms.includes('instagram') && <i className="fab fa-instagram text-slate-400 group-hover:text-pink-500 transition-colors"></i>}
-                     {brand.active_platforms.includes('youtube') && <i className="fab fa-youtube text-slate-400 group-hover:text-red-500 transition-colors"></i>}
+                     {brand.active_platforms?.includes('facebook') && <i className="fab fa-facebook text-slate-400 group-hover:text-blue-500 transition-colors"></i>}
+                     {brand.active_platforms?.includes('instagram') && <i className="fab fa-instagram text-slate-400 group-hover:text-pink-500 transition-colors"></i>}
+                     {brand.active_platforms?.includes('youtube') && <i className="fab fa-youtube text-slate-400 group-hover:text-red-500 transition-colors"></i>}
                   </div>
                 </div>
               ))}
@@ -508,10 +506,10 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
               <div className={`rounded-[3.5rem] p-12 shadow-xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
                 <h3 className={`text-3xl font-black mb-10 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>মার্কেট ফিট রিসার্চ</h3>
                 <div className="space-y-10">
-                  <div className={`p-8 rounded-[2.5rem] ${isDarkMode ? 'bg-slate-800' : 'bg-slate-50'}`}><p className={`text-[10px] font-black mb-3 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>প্রধান সমস্যা</p><p className={`font-black text-2xl leading-snug ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{pmf.core_problem}</p></div>
+                  <div className={`p-8 rounded-[2.5rem] ${isDarkMode ? 'bg-slate-800' : 'bg-slate-50'}`}><p className={`text-[10px] font-black mb-3 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>প্রধান সমস্যা</p><p className={`font-black text-2xl leading-snug ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{pmf?.core_problem || 'N/A'}</p></div>
                   <div className="grid grid-cols-2 gap-8">
-                    <div className={`p-8 border rounded-[2.5rem] text-center ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}><p className={`text-[10px] font-black mb-3 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>জরুরিতা</p><p className={`font-black text-xl ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{pmf.urgency_level}</p></div>
-                    <div className={`p-8 border rounded-[2.5rem] text-center ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}><p className={`text-[10px] font-black mb-3 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>চাহিদা</p><p className={`font-black text-xl ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{pmf.demand_type}</p></div>
+                    <div className={`p-8 border rounded-[2.5rem] text-center ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}><p className={`text-[10px] font-black mb-3 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>জরুরিতা</p><p className={`font-black text-xl ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{pmf?.urgency_level || 'N/A'}</p></div>
+                    <div className={`p-8 border rounded-[2.5rem] text-center ${isDarkMode ? 'border-slate-700' : 'border-slate-100'}`}><p className={`text-[10px] font-black mb-3 uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-400'}`}>চাহিদা</p><p className={`font-black text-xl ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{pmf?.demand_type || 'N/A'}</p></div>
                   </div>
                 </div>
               </div>
@@ -520,9 +518,9 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
                 <div className="h-72 mb-10">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={[
-                      { name: 'FB/IG', value: comp.ad_saturation.facebook_instagram },
-                      { name: 'Google', value: comp.ad_saturation.google_ads },
-                      { name: 'Markets', value: comp.ad_saturation.marketplaces },
+                      { name: 'FB/IG', value: comp?.ad_saturation?.facebook_instagram || 0 },
+                      { name: 'Google', value: comp?.ad_saturation?.google_ads || 0 },
+                      { name: 'Markets', value: comp?.ad_saturation?.marketplaces || 0 },
                     ]} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={isDarkMode ? '#334155' : '#e2e8f0'} />
                       <XAxis type="number" hide />
@@ -549,20 +547,20 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
                   <p className={`font-bold text-lg ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>এই ব্র্যান্ডগুলো বর্তমানে মার্কেটে ভালো করছে। আপনি আলাদাভাবে এদের রিসার্চ করতে পারেন।</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-                  {compRes.top_competitors.map((brand, i) => (
+                  {(compRes?.top_competitors || []).map((brand, i) => (
                     <div key={i} className={`p-10 rounded-[3rem] border flex flex-col items-center justify-center text-center group transition-all duration-500 transform hover:-translate-y-3 ${isDarkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:shadow-2xl' : 'bg-slate-50 border-slate-100 hover:bg-white hover:shadow-2xl'}`}>
                       <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-xl flex items-center justify-center mb-8 text-white font-black text-4xl shadow-indigo-100/20">
-                        {brand.name.charAt(0)}
+                        {brand.name?.charAt(0) || '?'}
                       </div>
-                      <p className={`text-xl font-black mb-4 break-words w-full ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{brand.name}</p>
+                      <p className={`text-xl font-black mb-4 break-words w-full ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{brand.name || 'Unknown'}</p>
                       <div className={`px-4 py-2 rounded-xl border mb-6 w-full ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Sales Volume</p>
-                        <p className="text-sm font-bold text-emerald-600">{brand.estimated_sales_volume}</p>
+                        <p className="text-sm font-bold text-emerald-600">{brand.estimated_sales_volume || 'N/A'}</p>
                       </div>
                       <div className="flex gap-4 items-center">
-                         {brand.active_platforms.includes('facebook') && <i className="fab fa-facebook text-slate-400 group-hover:text-blue-500 transition-colors text-xl"></i>}
-                         {brand.active_platforms.includes('instagram') && <i className="fab fa-instagram text-slate-400 group-hover:text-pink-500 transition-colors text-xl"></i>}
-                         {brand.active_platforms.includes('youtube') && <i className="fab fa-youtube text-slate-400 group-hover:text-red-500 transition-colors text-xl"></i>}
+                         {brand.active_platforms?.includes('facebook') && <i className="fab fa-facebook text-slate-400 group-hover:text-blue-500 transition-colors text-xl"></i>}
+                         {brand.active_platforms?.includes('instagram') && <i className="fab fa-instagram text-slate-400 group-hover:text-pink-500 transition-colors text-xl"></i>}
+                         {brand.active_platforms?.includes('youtube') && <i className="fab fa-youtube text-slate-400 group-hover:text-red-500 transition-colors text-xl"></i>}
                       </div>
                     </div>
                   ))}
@@ -576,12 +574,12 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                <div className="lg:col-span-2 space-y-10">
-                  {compRes.live_ad_trends.map((ad, i) => renderCompetitorAd(ad, i))}
+                  {(compRes?.live_ad_trends || []).map((ad, i) => renderCompetitorAd(ad, i))}
                </div>
                <div className="space-y-10">
                   <div className="bg-slate-900 rounded-[3.5rem] p-12 text-white shadow-2xl">
                     <h4 className="text-2xl font-black mb-10 flex items-center gap-4">Winning Elements</h4>
-                    {compRes.winning_creative_elements.map((el, i) => (
+                    {(compRes?.winning_creative_elements || []).map((el, i) => (
                       <div key={i} className="flex items-center gap-5 p-5 bg-white/5 rounded-2xl border border-white/10 group hover:bg-white/10 transition-all mb-4">
                         <i className="fas fa-check-circle text-emerald-400 text-sm"></i><p className="text-base font-bold">{el}</p>
                       </div>
@@ -760,18 +758,18 @@ const AnalysisDashboard: React.FC<Props> = ({ analysis, productName, userTier, o
   return (
     <div className="space-y-12 pb-24 max-w-7xl mx-auto px-4 md:px-8">
       {/* Sticky Sub-Navigation */}
-      <nav className={`flex flex-wrap justify-center gap-4 p-4 backdrop-blur-xl rounded-[3rem] shadow-2xl border sticky top-24 z-[70] overflow-x-auto no-scrollbar mb-12 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-100'}`}>
+      <nav className={`flex flex-nowrap justify-start md:justify-center gap-2 p-2 backdrop-blur-xl rounded-2xl shadow-lg border sticky top-20 z-[50] overflow-x-auto no-scrollbar mb-8 ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-100'}`}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-4 px-8 py-5 rounded-[2rem] text-base font-black transition-all duration-500 whitespace-nowrap shadow-sm border-2 ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-300 whitespace-nowrap shadow-sm border shrink-0 ${
               activeTab === tab.id
-                ? `${tab.color} text-white shadow-xl border-transparent scale-105 ring-4 ring-indigo-500/20`
-                : isDarkMode ? 'text-slate-400 bg-slate-800 border-slate-700 hover:bg-slate-700 hover:text-indigo-400 hover:border-indigo-500/50 hover:scale-105' : 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-white hover:text-indigo-600 hover:border-indigo-200 hover:scale-105'
+                ? `${tab.color} text-white shadow-md border-transparent scale-105 ring-2 ring-indigo-500/20`
+                : isDarkMode ? 'text-slate-400 bg-slate-800 border-slate-700 hover:bg-slate-700 hover:text-indigo-400 hover:border-indigo-500/50' : 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-white hover:text-indigo-600 hover:border-indigo-200'
             }`}
           >
-            <i className={`fas ${tab.icon} ${activeTab === tab.id ? 'animate-bounce text-xl' : 'text-lg'}`}></i>
+            <i className={`fas ${tab.icon} ${activeTab === tab.id ? 'animate-bounce text-sm' : 'text-xs'}`}></i>
             <span>{tab.label}</span>
           </button>
         ))}

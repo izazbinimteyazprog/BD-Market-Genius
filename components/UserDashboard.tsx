@@ -12,6 +12,8 @@ interface UserDashboardProps {
   onClose: () => void;
   onViewReport: (productName: string, analysisData: MarketResearchResponse) => void;
   onLogout: () => void;
+  onUpgradeClick: () => void;
+  onAdminClick?: () => void;
 }
 
 interface SavedReport {
@@ -28,7 +30,9 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
   isDarkMode, 
   onClose, 
   onViewReport,
-  onLogout
+  onLogout,
+  onUpgradeClick,
+  onAdminClick
 }) => {
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -105,10 +109,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
               </div>
               {userTier !== 'pro_exclusive' && (
                 <button 
-                  onClick={() => {
-                    onClose();
-                    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                  onClick={onUpgradeClick}
                   className="w-full py-3 bg-indigo-600 text-white text-sm font-black rounded-xl hover:bg-indigo-700 transition-all shadow-md"
                 >
                   Upgrade Plan
@@ -129,6 +130,15 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
                 </div>
               </div>
             </div>
+
+            {userTier === 'admin' && (
+              <button 
+                onClick={onAdminClick}
+                className="w-full py-4 font-black rounded-2xl transition-all border-2 bg-rose-600 text-white hover:bg-rose-700 shadow-lg"
+              >
+                <i className="fas fa-shield-alt mr-2"></i> Admin Gateway
+              </button>
+            )}
 
             <button 
               onClick={onLogout}
